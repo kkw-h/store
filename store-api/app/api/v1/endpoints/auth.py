@@ -29,8 +29,8 @@ async def login_wechat(
     wx_data = await wechat.code_to_session(login_data.code)
     if "errcode" in wx_data and wx_data["errcode"] != 0:
         # 开发环境 Mock 逻辑: 如果是 mock_code 则模拟成功
-        if login_data.code == "mock_code":
-            openid = "mock_openid_12345"
+        if login_data.code == "mock_code" or login_data.code == "mock_code_admin":
+            openid = "mock_openid_12345" if login_data.code == "mock_code" else "mock_openid_admin"
         else:
             raise HTTPException(
                 status_code=400,
