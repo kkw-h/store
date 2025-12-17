@@ -12,6 +12,11 @@ class BaseStorage(ABC):
     async def upload(self, file: UploadFile, folder: str = "uploads") -> str:
         pass
 
+    @abstractmethod
+    def get_file_url(self, path: str) -> str:
+        pass
+
+
 class AliyunOSSStorage(BaseStorage):
     def __init__(self):
         self.auth = oss2.Auth(
@@ -56,12 +61,27 @@ class AliyunOSSStorage(BaseStorage):
         # Ideally run in threadpool for large files, but for small images it's ok.
         self.bucket.put_object(object_name, content)
         
-        # Return URL
-        # Assuming public read bucket. If private, need to sign url.
-        # Format: https://{bucket}.{endpoint}/{object}
-        # Note: endpoint usually contains protocol or not? 
-        # config says "oss-cn-beijing.aliyuncs.com"
-        url = f"https://{settings.ALIYUN_OSS_BUCKET_NAME}.{settings.ALIYUN_OSS_ENDPOINT}/{object_name}"
+        # Return relative path (object_name) for flexible storage
+        # The full URL can be generated using get_file_url(object_name)
+        return object_name
+
+    def get_file_url(self, path: str) -> str:
+        """
+        获取文件的完整访问链接 (签名 URL)
+        """
+        # Return Signed URL (valid for 1 year = 31536000 seconds)
+        # This is required if the bucket is private (ACL=private)
+        
+        # Ensure endpoint starts with https for the signed URL
+        if not self.bucket.endpoint.startswith("http"):
+             pass
+
+        url = self.bucket.sign_url('GET', path, 31536000)
+        
+        # Force HTTPS if the generated URL is HTTP and endpoint didn't specify
+        if url.startswith("http://") and "aliyuncs.com" in url:
+            url = url.replace("http://", "https://", 1)
+            
         return url
 
 class LocalStorage(BaseStorage):
@@ -69,6 +89,9 @@ class LocalStorage(BaseStorage):
     async def upload(self, file: UploadFile, folder: str = "uploads") -> str:
         # Implementation skipped for now as user requested OSS
         pass
+
+    def get_file_url(self, path: str) -> str:
+        return path
 
 def get_storage() -> BaseStorage:
     if settings.UPLOAD_STORAGE_TYPE == "aliyun":

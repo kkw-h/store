@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import Optional, List
 from decimal import Decimal
+from app.services.storage import storage
 
 # --- Category Schemas ---
 
@@ -60,8 +61,18 @@ class ProductOut(ProductBase):
     """商品响应"""
     id: int
     sales_count: int
+    thumb_path: Optional[str] = Field(None, description="图片存储路径")
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='after')
+    def compute_urls(self):
+        # 如果有 thumb_url (此时是数据库中的 path)，则保存到 thumb_path 并转换为 url
+        if self.thumb_url:
+            self.thumb_path = self.thumb_url
+            if not self.thumb_url.startswith('http'):
+                self.thumb_url = storage.get_file_url(self.thumb_url)
+        return self
 
 class ProductListOut(BaseModel):
     """商品列表响应 (带分页)"""

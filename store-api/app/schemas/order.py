@@ -3,6 +3,7 @@ from typing import List, Optional, Any
 from decimal import Decimal
 from datetime import datetime
 from enum import Enum
+from app.schemas.user import User as UserSchema
 
 class DeliveryType(str, Enum):
     DELIVERY = "delivery"
@@ -73,7 +74,7 @@ class OrderTimelineOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-class OrderListOut(BaseModel):
+class OrderOut(BaseModel):
     id: int
     order_no: str
     status: int
@@ -87,7 +88,22 @@ class OrderListOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class OrderDetailOut(OrderListOut):
+class OrderAdminOut(OrderOut):
+    user: Optional[UserSchema] = None
+
+class OrderListOut(BaseModel):
+    list: List[OrderOut]
+    total: int
+    page: int
+    size: int
+
+class OrderAdminListOut(BaseModel):
+    list: List[OrderAdminOut]
+    total: int
+    page: int
+    size: int
+
+class OrderDetailOut(OrderOut):
     delivery_type: str
     delivery_fee: Decimal
     total_amount: Decimal

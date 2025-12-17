@@ -15,7 +15,7 @@ from app.schemas.response import ResponseModel, success
 
 router = APIRouter()
 
-@router.get("/order/list", response_model=ResponseModel[List[order_schemas.OrderListOut]])
+@router.get("/order/list", response_model=ResponseModel[order_schemas.OrderAdminListOut])
 async def list_all_orders(
     status: int = 0,
     page: int = 1,
@@ -37,7 +37,7 @@ async def list_all_orders(
     
     # Paginate
     query = query.offset((page - 1) * size).limit(size)
-    query = query.options(selectinload(Order.items))
+    query = query.options(selectinload(Order.items), selectinload(Order.user))
     
     result = await db.execute(query)
     orders = result.scalars().all()

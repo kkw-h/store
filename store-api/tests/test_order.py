@@ -115,7 +115,12 @@ async def test_admin_flow(client: AsyncClient, admin_token_headers):
     
     # 3. Shop Config
     res = await client.post(f"{settings.API_V1_STR}/admin/shop/config", json={
-        "is_open": 1, "open_time": "09:00", "close_time": "21:00"
+        "is_open": 1, 
+        "open_time": "09:00", 
+        "close_time": "21:00",
+        "store_name": "Test Store",
+        "delivery_fee": 0,
+        "min_order_amount": 0
     }, headers=admin_token_headers)
     assert res.json()["code"] == 200
 

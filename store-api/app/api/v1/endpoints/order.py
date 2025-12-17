@@ -237,7 +237,7 @@ async def create_order(
         "pay_params": {"mock": "pay_params"}
     })
 
-@router.get("/list", response_model=ResponseModel[List[order_schemas.OrderListOut]])
+@router.get("/list", response_model=ResponseModel[List[order_schemas.OrderOut]])
 async def list_orders(
     status: int = 0, # 0 for all
     session: AsyncSession = Depends(deps.get_db),

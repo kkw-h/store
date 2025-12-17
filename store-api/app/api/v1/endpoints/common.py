@@ -1,11 +1,12 @@
 from typing import Any
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.response import ResponseModel, success
+from app.schemas.file import FileOut
 from app.services.storage import storage
 
 router = APIRouter()
 
-@router.post("/upload", response_model=ResponseModel[str])
+@router.post("/upload", response_model=ResponseModel[FileOut])
 async def upload_file(
     file: UploadFile = File(...),
 ) -> Any:
@@ -13,12 +14,13 @@ async def upload_file(
     通用文件上传接口
     
     - 支持图片、视频等文件
-    - 返回文件访问 URL
+    - 返回文件存储路径 (Relative Path) 和 访问链接 (URL)
     - 目前使用阿里云 OSS
     """
     try:
-        url = await storage.upload(file)
-        return success(data=url)
+        path = await storage.upload(file)
+        url = storage.get_file_url(path)
+        return success(data={"path": path, "url": url})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
