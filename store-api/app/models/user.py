@@ -20,6 +20,7 @@ class User(Base):
     # 关联关系
     addresses = relationship("UserAddress", back_populates="user", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="user")
+    cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserAddress(Base):
