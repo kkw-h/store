@@ -38,6 +38,25 @@ async def test_phone_login_validation(client: AsyncClient):
         json={"phone": "12345", "code": "123456"}
     )
     assert response.json()["code"] == 400
+
+@pytest.mark.asyncio
+async def test_admin_login(client: AsyncClient):
+    # 1. Success
+    response = await client.post(
+        f"{settings.API_V1_STR}/auth/admin/login",
+        json={"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == 200
+    assert "token" in data["data"]
+    
+    # 2. Fail (Wrong Password)
+    response = await client.post(
+        f"{settings.API_V1_STR}/auth/admin/login",
+        json={"username": settings.ADMIN_USERNAME, "password": "wrongpassword"}
+    )
+    assert response.json()["code"] == 400
     
     response = await client.post(
         f"{settings.API_V1_STR}/auth/phone",

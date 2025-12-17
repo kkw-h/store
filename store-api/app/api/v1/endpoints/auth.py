@@ -12,6 +12,34 @@ from app.services import wechat
 
 router = APIRouter()
 
+from app.core.config import settings
+
+@router.post("/admin/login", response_model=ResponseModel[auth_schemas.LoginResponse])
+async def login_admin(
+    login_data: auth_schemas.AdminLogin,
+    session: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    商家端管理员登录
+    """
+    # 验证账号密码
+    if login_data.username != settings.ADMIN_USERNAME or login_data.password != settings.ADMIN_PASSWORD:
+        raise HTTPException(status_code=400, detail="用户名或密码错误")
+        
+    # 生成 Token (使用特殊 subject 标识管理员)
+    access_token = security.create_access_token(subject="admin")
+    
+    return success(data={
+        "token": access_token,
+        "userInfo": {
+            "nickname": "管理员",
+            "avatar": None,
+            "phone": None,
+            "balance": 0.00,
+            "points": 0
+        }
+    })
+
 @router.post("/login", response_model=ResponseModel[auth_schemas.LoginResponse])
 async def login_wechat(
     login_data: auth_schemas.WeChatLogin,

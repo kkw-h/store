@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     WECHAT_APP_ID: str = ""
     WECHAT_APP_SECRET: str = ""
 
+    # 商家端后台配置 (Admin Panel)
+    ADMIN_USERNAME: str
+    ADMIN_PASSWORD: str
+
     # 文件存储配置 (File Storage - Aliyun OSS)
     UPLOAD_STORAGE_TYPE: str = "aliyun" # local, aliyun
     ALIYUN_OSS_ACCESS_KEY_ID: str = ""

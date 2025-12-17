@@ -10,6 +10,11 @@ class PhoneLogin(BaseModel):
     phone: str = Field(..., pattern=r"^1[3-9]\d{9}$", description="手机号")
     code: str = Field(..., min_length=4, max_length=6, description="短信验证码")
 
+class AdminLogin(BaseModel):
+    """管理员登录请求参数"""
+    username: str = Field(..., min_length=1, description="用户名")
+    password: str = Field(..., min_length=1, description="密码")
+
 class UserInfo(BaseModel):
     """用户信息模型"""
     nickname: Optional[str] = Field(None, min_length=1, max_length=32, description="用户昵称")
