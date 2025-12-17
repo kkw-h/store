@@ -46,6 +46,7 @@ class Order(Base):
     # 关联关系
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    timeline = relationship("OrderTimeline", back_populates="order", cascade="all, delete-orphan", order_by="OrderTimeline.created_at")
 
     # 索引优化
     __table_args__ = (
@@ -74,3 +75,18 @@ class OrderItem(Base):
     # 关联关系
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+class OrderTimeline(Base):
+    """
+    订单时间轴/操作日志 (Order Timeline)
+    记录订单状态流转历史。
+    """
+    __tablename__ = "order_timeline"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    order_id = Column(BigInteger, ForeignKey("orders.id"), nullable=False, index=True, comment='关联订单ID')
+    status = Column(String(50), nullable=False, comment='状态/操作描述 (如: 下单成功, 支付成功)')
+    remark = Column(String(255), comment='备注信息')
+    created_at = Column(DateTime(timezone=True), default=func.now(), comment='发生时间')
+
+    order = relationship("Order", back_populates="timeline")
