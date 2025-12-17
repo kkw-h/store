@@ -85,6 +85,9 @@ class OrderListOut(BaseModel):
     created_at: datetime
     items: List[OrderItemOut]
     
+    # User info for admin
+    user_id: Optional[int] = None
+
     class Config:
         from_attributes = True
 
@@ -97,3 +100,7 @@ class OrderDetailOut(OrderListOut):
     qrcode_url: Optional[str] = None
     timeline: List[OrderTimelineOut] = Field(default_factory=list, alias="timeline") # Use real timeline model
     address_snapshot: Optional[Any] = None
+
+class OrderCancelRequest(BaseModel):
+    order_id: int
+    reason: Optional[str] = None

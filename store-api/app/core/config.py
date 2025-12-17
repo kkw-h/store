@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     WECHAT_APP_ID: str = ""
     WECHAT_APP_SECRET: str = ""
 
+    # 文件存储配置 (File Storage - Aliyun OSS)
+    UPLOAD_STORAGE_TYPE: str = "aliyun" # local, aliyun
+    ALIYUN_OSS_ACCESS_KEY_ID: str = ""
+    ALIYUN_OSS_ACCESS_KEY_SECRET: str = ""
+    ALIYUN_OSS_ENDPOINT: str = ""
+    ALIYUN_OSS_BUCKET_NAME: str = "your-bucket-name" # Need user to provide bucket or we default
+    ALIYUN_OSS_REGION: str = ""
+
     # 数据库配置 (Database)
     POSTGRES_SERVER: str
     POSTGRES_USER: str

@@ -7,10 +7,75 @@ from datetime import datetime
 from app.api import deps
 from app.models.order import Order, OrderTimeline
 from app.models.shop import ShopConfig
-from app.schemas import admin as admin_schemas
+from app.schemas import admin as admin_schemas, order as order_schemas
 from app.schemas.response import ResponseModel, success
+from typing import List, Any
 
 router = APIRouter()
+
+@router.get("/order/list", response_model=ResponseModel[List[order_schemas.OrderListOut]])
+async def list_all_orders(
+    status: int = 0,
+    page: int = 1,
+    size: int = 10,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    管理员获取订单列表
+    """
+    query = select(Order).order_by(Order.created_at.desc())
+    
+    if status != 0:
+        query = query.where(Order.status == status)
+        
+    # Count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+    
+    # Paginate
+    query = query.offset((page - 1) * size).limit(size)
+    query = query.options(selectinload(Order.items))
+    
+    result = await db.execute(query)
+    orders = result.scalars().all()
+    
+    # Process status text
+    from app.api.v1.endpoints.order import get_status_text
+    order_list = []
+    for o in orders:
+        o.status_text = get_status_text(o.status, o.delivery_type)
+        order_list.append(o)
+        
+    return success(data={
+        "list": order_list,
+        "total": total,
+        "page": page,
+        "size": size
+    })
+
+@router.get("/order/detail", response_model=ResponseModel[order_schemas.OrderDetailOut])
+async def get_admin_order_detail(
+    order_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    管理员获取订单详情
+    """
+    query = select(Order)\
+        .where(Order.id == order_id)\
+        .options(selectinload(Order.items), selectinload(Order.timeline))
+    
+    result = await db.execute(query)
+    order = result.scalars().first()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    from app.api.v1.endpoints.order import get_status_text
+    order.status_text = get_status_text(order.status, order.delivery_type)
+    
+    return success(data=order)
 
 @router.post("/order/audit", response_model=ResponseModel)
 async def audit_order(
@@ -160,6 +225,63 @@ async def verify_pickup(
             "order_info": order_info
         }
     )
+
+from sqlalchemy.orm import selectinload
+from app.models.product import Product
+
+@router.get("/dashboard", response_model=ResponseModel)
+async def get_dashboard_stats(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    数据看板
+    """
+    today = datetime.now().date()
+    
+    # Today Orders
+    result = await db.execute(
+        select(func.count(Order.id))
+        .where(func.date(Order.created_at) == today)
+    )
+    today_orders = result.scalar_one()
+    
+    # Today Sales (Completed orders)
+    result = await db.execute(
+        select(func.sum(Order.final_amount))
+        .where(func.date(Order.created_at) == today)
+        .where(Order.status == 4)
+    )
+    today_sales = result.scalar_one() or 0
+    
+    # Pending Orders
+    result = await db.execute(
+        select(func.count(Order.id))
+        .where(Order.status.in_([1, 2])) # Pending Delivery/Pickup
+    )
+    pending_orders = result.scalar_one()
+    
+    return success(data={
+        "today_orders": today_orders,
+        "today_sales": str(today_sales),
+        "pending_orders": pending_orders
+    })
+
+@router.post("/product/stock", response_model=ResponseModel)
+async def adjust_stock(
+    product_id: int,
+    stock: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    快速调整商品库存
+    """
+    product = await db.get(Product, product_id)
+    if not product:
+         raise HTTPException(status_code=404, detail="Product not found")
+         
+    product.stock = stock
+    await db.commit()
+    return success(msg="库存已更新")
 
 @router.post("/shop/config", response_model=ResponseModel)
 async def update_shop_config(

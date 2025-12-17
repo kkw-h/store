@@ -15,6 +15,13 @@ class UserInfo(BaseModel):
     nickname: Optional[str] = Field(None, description="用户昵称")
     avatar: Optional[str] = Field(None, description="用户头像URL")
     phone: Optional[str] = Field(None, description="手机号 (部分脱敏)")
+    balance: Optional[float] = Field(0.00, description="余额")
+    points: Optional[int] = Field(0, description="积分")
+
+class UserUpdate(BaseModel):
+    """用户更新模型"""
+    nickname: Optional[str] = None
+    avatar: Optional[str] = None
 
 class LoginResponse(BaseModel):
     """登录成功响应"""

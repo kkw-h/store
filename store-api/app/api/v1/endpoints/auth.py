@@ -65,8 +65,53 @@ async def login_wechat(
         "userInfo": {
             "nickname": user.nickname,
             "avatar": user.avatar_url,
-            "phone": user.phone
+            "phone": user.phone,
+            "balance": 0.00, # Mock balance
+            "points": 0 # Mock points
         }
+    })
+
+@router.get("/profile", response_model=ResponseModel[auth_schemas.UserInfo])
+async def get_user_profile(
+    current_user: User = Depends(deps.get_current_user),
+    session: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    获取当前用户信息
+    """
+    # In real world, we might fetch balance/points from other tables
+    return success(data={
+        "nickname": current_user.nickname,
+        "avatar": current_user.avatar_url,
+        "phone": current_user.phone,
+        "balance": 0.00,
+        "points": 0
+    })
+
+@router.put("/profile", response_model=ResponseModel[auth_schemas.UserInfo])
+async def update_user_profile(
+    user_in: auth_schemas.UserUpdate,
+    current_user: User = Depends(deps.get_current_user),
+    session: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    更新用户信息
+    """
+    if user_in.nickname is not None:
+        current_user.nickname = user_in.nickname
+    if user_in.avatar is not None:
+        current_user.avatar_url = user_in.avatar
+        
+    session.add(current_user)
+    await session.commit()
+    await session.refresh(current_user)
+    
+    return success(data={
+        "nickname": current_user.nickname,
+        "avatar": current_user.avatar_url,
+        "phone": current_user.phone,
+        "balance": 0.00,
+        "points": 0
     })
 
 @router.post("/phone", response_model=ResponseModel[auth_schemas.LoginResponse])
@@ -104,6 +149,8 @@ async def login_phone(
         "userInfo": {
             "nickname": user.nickname,
             "avatar": user.avatar_url,
-            "phone": user.phone
+            "phone": user.phone,
+            "balance": 0.00,
+            "points": 0
         }
     })

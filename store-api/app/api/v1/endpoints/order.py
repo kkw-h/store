@@ -34,6 +34,65 @@ def get_status_text(status: int, delivery_type: str) -> str:
     }
     return status_map.get(status, "未知状态")
 
+@router.post("/cancel", response_model=ResponseModel)
+async def cancel_order(
+    cancel_in: order_schemas.OrderCancelRequest,
+    session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    用户主动取消订单
+    仅限: 待支付(0), 待接单(1), 待自提(2) 状态
+    """
+    query = select(Order).where(Order.id == cancel_in.order_id, Order.user_id == current_user.id)
+    result = await session.execute(query)
+    order = result.scalars().first()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+        
+    # Check status
+    # Allow cancel if status is 0, 1, or 2 (before merchant accepts for delivery, or before pickup verified?)
+    # Logic: 
+    # - 0: Pending Payment -> OK
+    # - 1: Pending Delivery (Merchant hasn't accepted yet) -> OK
+    # - 2: Pending Pickup (Merchant hasn't verified yet) -> OK? Usually yes.
+    if order.status not in [0, 1, 2]:
+         raise HTTPException(status_code=400, detail="当前订单状态不可取消")
+         
+    order.status = -1
+    order.reject_reason = f"用户主动取消: {cancel_in.reason or ''}"
+    
+    # Restore Stock? 
+    # In a real system, we should restore stock.
+    # For simplicity, we skip it or implement simple logic.
+    # Let's restore stock.
+    # We need to load items.
+    # But wait, we didn't eager load items.
+    
+    # Re-fetch with items
+    query_items = select(OrderItem).where(OrderItem.order_id == order.id)
+    result_items = await session.execute(query_items)
+    items = result_items.scalars().all()
+    
+    for item in items:
+        # Find product
+        prod = await session.get(Product, item.product_id)
+        if prod:
+            prod.stock += item.quantity
+            prod.sales_count -= item.quantity
+    
+    # Add timeline
+    timeline = OrderTimeline(
+        order_id=order.id,
+        status="已取消",
+        remark="用户主动取消"
+    )
+    session.add(timeline)
+    
+    await session.commit()
+    
+    return success(msg="订单已取消")
 @router.post("/preview", response_model=ResponseModel[order_schemas.OrderPreviewResponse])
 async def preview_order(
     preview_in: order_schemas.OrderPreviewRequest,
