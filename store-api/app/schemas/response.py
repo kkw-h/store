@@ -1,5 +1,5 @@
 from typing import Generic, TypeVar, Optional, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # 定义泛型变量 T
 T = TypeVar('T')
@@ -17,9 +17,8 @@ class ResponseModel(BaseModel, Generic[T]):
     msg: str = "success"
     data: Optional[T] = None
 
-    class Config:
-        # 允许通过字段别名填充数据
-        populate_by_name = True
+    # 允许通过字段别名填充数据
+    model_config = ConfigDict(populate_by_name=True)
 
 # 辅助函数: 快速构造成功响应
 def success(data: T = None, msg: str = "success"):

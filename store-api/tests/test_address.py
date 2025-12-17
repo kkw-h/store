@@ -92,3 +92,41 @@ async def test_delete_address(client: AsyncClient, normal_user_token_headers):
     )
     assert response.status_code == 200
     assert response.json()["code"] == 200
+
+@pytest.mark.asyncio
+async def test_address_validation(client: AsyncClient, normal_user_token_headers):
+    # Test Invalid Contact Name (Too short)
+    res = await client.post(
+        f"{settings.API_V1_STR}/address",
+        json={
+            "contact_name": "A", 
+            "contact_phone": "13900000001",
+            "detail_address": "Valid Address"
+        },
+        headers=normal_user_token_headers
+    )
+    assert res.json()["code"] == 400
+
+    # Test Invalid Phone
+    res = await client.post(
+        f"{settings.API_V1_STR}/address",
+        json={
+            "contact_name": "Valid Name", 
+            "contact_phone": "123", 
+            "detail_address": "Valid Address"
+        },
+        headers=normal_user_token_headers
+    )
+    assert res.json()["code"] == 400
+
+    # Test Invalid Detail Address (Too short)
+    res = await client.post(
+        f"{settings.API_V1_STR}/address",
+        json={
+            "contact_name": "Valid Name", 
+            "contact_phone": "13900000001", 
+            "detail_address": "Abc"
+        },
+        headers=normal_user_token_headers
+    )
+    assert res.json()["code"] == 400

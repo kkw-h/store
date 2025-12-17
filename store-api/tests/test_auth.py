@@ -31,17 +31,47 @@ async def test_phone_login(client: AsyncClient):
     assert data["data"]["userInfo"]["phone"] == "13800138000"
 
 @pytest.mark.asyncio
-async def test_login_invalid_code(client: AsyncClient):
+async def test_phone_login_validation(client: AsyncClient):
+    # Test Invalid Phone Format
     response = await client.post(
         f"{settings.API_V1_STR}/auth/phone",
-        json={"phone": "13800138000", "code": "000000"}
+        json={"phone": "12345", "code": "123456"}
     )
-    # The global exception handler returns 200 with code != 200, or 400?
-    # Based on main.py exception handler, it returns 200 with error body if it catches HTTPException
-    # But wait, main.py says:
-    # @app.exception_handler(StarletteHTTPException) ... returns JSONResponse(status_code=200, content=error(code=exc.status_code...))
-    # So HTTP 400 becomes 200 OK with body {"code": 400 ...}
+    assert response.json()["code"] == 400
     
-    assert response.status_code == 200 
-    data = response.json()
-    assert data["code"] == 400
+    response = await client.post(
+        f"{settings.API_V1_STR}/auth/phone",
+        json={"phone": "abcdefghijk", "code": "123456"}
+    )
+    assert response.json()["code"] == 400
+
+    # Test Invalid Code Format
+    response = await client.post(
+        f"{settings.API_V1_STR}/auth/phone",
+        json={"phone": "13800138000", "code": "123"} # Too short
+    )
+    assert response.json()["code"] == 400
+    
+    response = await client.post(
+        f"{settings.API_V1_STR}/auth/phone",
+        json={"phone": "13800138000", "code": "1234567"} # Too long
+    )
+    assert response.json()["code"] == 400
+
+@pytest.mark.asyncio
+async def test_user_update_validation(client: AsyncClient, normal_user_token_headers):
+    # Test Invalid Nickname (Too short)
+    response = await client.put(
+        f"{settings.API_V1_STR}/auth/profile",
+        json={"nickname": ""},
+        headers=normal_user_token_headers
+    )
+    assert response.json()["code"] == 400
+
+    # Test Invalid Nickname (Too long)
+    response = await client.put(
+        f"{settings.API_V1_STR}/auth/profile",
+        json={"nickname": "a" * 33},
+        headers=normal_user_token_headers
+    )
+    assert response.json()["code"] == 400

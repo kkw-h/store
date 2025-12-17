@@ -50,19 +50,26 @@ async def add_to_cart(
         )
         session.add(cart_item)
     
+    # Store product info before commit (commit expires objects)
+    prod_id = product.id
+    prod_name = product.name
+    prod_thumb = product.thumb_url
+    prod_price = product.price
+    prod_stock = product.stock
+
     await session.commit()
     await session.refresh(cart_item)
     
     # Construct response
     return success(data={
         "id": cart_item.id,
-        "product_id": product.id,
-        "product_name": product.name,
-        "product_image": product.thumb_url,
-        "price": product.price,
+        "product_id": prod_id,
+        "product_name": prod_name,
+        "product_image": prod_thumb,
+        "price": prod_price,
         "quantity": cart_item.quantity,
         "selected": cart_item.selected,
-        "stock": product.stock
+        "stock": prod_stock
     })
 
 @router.get("/list", response_model=ResponseModel[cart_schemas.CartListOut])

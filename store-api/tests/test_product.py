@@ -37,3 +37,43 @@ async def test_category_and_product_flow(client: AsyncClient, normal_user_token_
     # 5. Update Product
     res = await client.put(f"{settings.API_V1_STR}/product/{prod_id}", json={"name": "Updated Name"})
     assert res.json()["data"]["name"] == "Updated Name"
+
+@pytest.mark.asyncio
+async def test_product_validation(client: AsyncClient):
+    # 1. Category Validation
+    # Test empty name
+    res = await client.post(f"{settings.API_V1_STR}/category", json={"name": ""})
+    assert res.json()["code"] == 400
+    
+    # Test valid category for product tests
+    cat_res = await client.post(f"{settings.API_V1_STR}/category", json={"name": "Val Cat"})
+    cat_id = cat_res.json()["data"]["id"]
+
+    # 2. Product Validation
+    # Test negative price
+    res = await client.post(f"{settings.API_V1_STR}/product", json={
+        "category_id": cat_id,
+        "name": "Prod",
+        "price": "-10.00",
+        "stock": 10
+    })
+    assert res.json()["code"] == 400
+    
+    # Test negative stock
+    res = await client.post(f"{settings.API_V1_STR}/product", json={
+        "category_id": cat_id,
+        "name": "Prod",
+        "price": "10.00",
+        "stock": -1
+    })
+    assert res.json()["code"] == 400
+    
+    # Test invalid status (2 is not 0 or 1)
+    res = await client.post(f"{settings.API_V1_STR}/product", json={
+        "category_id": cat_id,
+        "name": "Prod",
+        "price": "10.00",
+        "stock": 10,
+        "status": 2
+    })
+    assert res.json()["code"] == 400
