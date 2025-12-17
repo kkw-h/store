@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import Any
-from datetime import datetime
+from sqlalchemy import select, func, desc, update, delete
+from sqlalchemy.orm import selectinload
+from typing import Any, List
+from datetime import datetime, time
 
 from app.api import deps
-from app.models.order import Order, OrderTimeline
+from app.models.order import Order, OrderTimeline, OrderItem
 from app.models.shop import ShopConfig
-from app.schemas import admin as admin_schemas, order as order_schemas
+from app.models.product import Product, Category
+from app.models.user import User
+from app.schemas import admin as admin_schemas, order as order_schemas, product as product_schemas, user as user_schemas
 from app.schemas.response import ResponseModel, success
-from typing import List, Any
 
 router = APIRouter()
 
@@ -283,6 +285,41 @@ async def adjust_stock(
     await db.commit()
     return success(msg="库存已更新")
 
+@router.get("/shop/config", response_model=ResponseModel[admin_schemas.ShopConfigOut])
+async def get_shop_config(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    获取店铺配置
+    """
+    result = await db.execute(select(ShopConfig).limit(1))
+    config = result.scalar_one_or_none()
+    
+    if not config:
+        # Return default config
+        return success(data={
+            "is_open": True,
+            "open_time": "09:00",
+            "close_time": "22:00",
+            "delivery_fee": 0.0,
+            "min_order_amount": 0.0,
+            "store_name": "社区优选",
+            "store_address": "",
+            "store_phone": ""
+        })
+    
+    # Format times
+    return success(data={
+        "is_open": config.is_open,
+        "open_time": config.open_time.strftime("%H:%M"),
+        "close_time": config.close_time.strftime("%H:%M"),
+        "delivery_fee": config.delivery_fee,
+        "min_order_amount": config.min_order_amount,
+        "store_name": config.store_name,
+        "store_address": config.store_address,
+        "store_phone": config.store_phone
+    })
+
 @router.post("/shop/config", response_model=ResponseModel)
 async def update_shop_config(
     request: admin_schemas.ShopConfigUpdate,
@@ -305,17 +342,213 @@ async def update_shop_config(
     if not config:
         # 初始化
         config = ShopConfig(
-            store_name="社区优选", # 默认名
+            store_name=request.store_name,
             is_open=bool(request.is_open),
             open_time=open_t,
-            close_time=close_t
+            close_time=close_t,
+            delivery_fee=request.delivery_fee,
+            min_order_amount=request.min_order_amount,
+            store_address=request.store_address,
+            store_phone=request.store_phone
         )
         db.add(config)
     else:
         config.is_open = bool(request.is_open)
         config.open_time = open_t
         config.close_time = close_t
+        config.store_name = request.store_name
+        config.delivery_fee = request.delivery_fee
+        config.min_order_amount = request.min_order_amount
+        config.store_address = request.store_address
+        config.store_phone = request.store_phone
         
     await db.commit()
     
     return success(msg="设置已更新")
+
+# --- Category Management ---
+
+@router.get("/category/list", response_model=ResponseModel[List[product_schemas.CategoryOut]])
+async def list_categories(
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """分类列表"""
+    result = await db.execute(select(Category).order_by(Category.sort_order.desc()))
+    categories = result.scalars().all()
+    return success(data=categories)
+
+@router.post("/category/create", response_model=ResponseModel)
+async def create_category(
+    request: product_schemas.CategoryCreate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """创建分类"""
+    category = Category(**request.model_dump())
+    db.add(category)
+    await db.commit()
+    return success(msg="分类创建成功")
+
+@router.post("/category/update", response_model=ResponseModel)
+async def update_category(
+    id: int,
+    request: product_schemas.CategoryUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """更新分类"""
+    category = await db.get(Category, id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    update_data = request.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(category, field, value)
+        
+    await db.commit()
+    return success(msg="分类更新成功")
+
+@router.post("/category/delete", response_model=ResponseModel)
+async def delete_category(
+    id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """删除分类"""
+    category = await db.get(Category, id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+        
+    # Check if has products
+    result = await db.execute(select(Product).where(Product.category_id == id).limit(1))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="该分类下有商品，禁止删除")
+        
+    await db.delete(category)
+    await db.commit()
+    return success(msg="分类已删除")
+
+# --- Product Management ---
+
+@router.get("/product/list", response_model=ResponseModel[product_schemas.ProductListOut])
+async def list_products(
+    page: int = 1,
+    size: int = 10,
+    name: str = None,
+    category_id: int = None,
+    status: int = None,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """商品列表 (Admin)"""
+    query = select(Product).order_by(Product.created_at.desc())
+    
+    if name:
+        query = query.where(Product.name.ilike(f"%{name}%"))
+    if category_id:
+        query = query.where(Product.category_id == category_id)
+    if status is not None:
+        query = query.where(Product.status == status)
+        
+    # Count
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one()
+    
+    # Paginate
+    query = query.offset((page - 1) * size).limit(size)
+    result = await db.execute(query)
+    products = result.scalars().all()
+    
+    return success(data={
+        "list": products,
+        "total": total,
+        "page": page,
+        "size": size
+    })
+
+@router.post("/product/save", response_model=ResponseModel)
+async def save_product(
+    request: product_schemas.ProductUpdate,
+    id: int = None, # If provided, update; else create
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """保存商品 (新增/编辑)"""
+    if id:
+        # Update
+        product = await db.get(Product, id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        update_data = request.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(product, field, value)
+        msg = "商品更新成功"
+    else:
+        # Create
+        # Validate required fields for create (since ProductUpdate has optionals)
+        # In a real scenario, we might want a separate Create schema or manual check
+        if not request.name or not request.price or not request.category_id:
+             raise HTTPException(status_code=400, detail="Missing required fields")
+             
+        product = Product(**request.model_dump())
+        db.add(product)
+        msg = "商品创建成功"
+        
+    await db.commit()
+    return success(msg=msg)
+
+@router.post("/product/delete", response_model=ResponseModel)
+async def delete_product(
+    id: int,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """删除商品"""
+    product = await db.get(Product, id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+        
+    await db.delete(product)
+    await db.commit()
+    return success(msg="商品已删除")
+
+@router.post("/product/status", response_model=ResponseModel)
+async def update_product_status(
+    id: int,
+    status: int, # 0 or 1
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """上下架商品"""
+    product = await db.get(Product, id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+        
+    product.status = status
+    await db.commit()
+    return success(msg="状态已更新")
+
+# --- User Management ---
+
+@router.get("/user/list", response_model=ResponseModel[user_schemas.UserListOut])
+async def list_users(
+    page: int = 1,
+    size: int = 10,
+    phone: str = None,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """用户列表"""
+    query = select(User).order_by(User.created_at.desc())
+    
+    if phone:
+        query = query.where(User.phone.ilike(f"%{phone}%"))
+        
+    # Count
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one()
+    
+    # Paginate
+    query = query.offset((page - 1) * size).limit(size)
+    result = await db.execute(query)
+    users = result.scalars().all()
+    
+    return success(data={
+        "list": users,
+        "total": total,
+        "page": page,
+        "size": size
+    })

@@ -41,18 +41,15 @@ async def test_admin_pickup_flow(client: AsyncClient, admin_token_headers):
 async def test_admin_validation(client: AsyncClient, admin_token_headers):
     # Test Invalid Shop Config - Time Format
     res = await client.post(f"{settings.API_V1_STR}/admin/shop/config", json={
-        "is_open": 1, "open_time": "9:00", "close_time": "21:00" # Should be HH:MM (09:00)
-    }, headers=admin_token_headers)
-    # Regex ^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$ handles 9:00 actually.
-    # Let's test invalid hour like 25:00
-    res = await client.post(f"{settings.API_V1_STR}/admin/shop/config", json={
-        "is_open": 1, "open_time": "25:00", "close_time": "21:00"
+        "is_open": 1, "open_time": "25:00", "close_time": "21:00",
+        "store_name": "Test Shop", "delivery_fee": 0, "min_order_amount": 0
     }, headers=admin_token_headers)
     assert res.json()["code"] == 400
 
     # Test Invalid Shop Config - is_open
     res = await client.post(f"{settings.API_V1_STR}/admin/shop/config", json={
-        "is_open": 2, "open_time": "09:00", "close_time": "21:00"
+        "is_open": 2, "open_time": "09:00", "close_time": "21:00",
+        "store_name": "Test Shop", "delivery_fee": 0, "min_order_amount": 0
     }, headers=admin_token_headers)
     assert res.json()["code"] == 400
 
