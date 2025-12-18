@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas import auth as auth_schemas
 from app.schemas.response import ResponseModel, success
 from app.services import wechat
+from app.utils.random_name import generate_random_nickname
 
 router = APIRouter()
 
@@ -79,7 +80,7 @@ async def login_wechat(
 
     # 3. 如果不存在则自动注册
     if not user:
-        user = User(openid=openid)
+        user = User(openid=openid, nickname=generate_random_nickname())
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -164,7 +165,7 @@ async def login_phone(
     
     # 3. 如果不存在则自动注册
     if not user:
-        user = User(phone=login_data.phone)
+        user = User(phone=login_data.phone, nickname=generate_random_nickname())
         session.add(user)
         await session.commit()
         await session.refresh(user)

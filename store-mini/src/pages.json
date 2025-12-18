@@ -1,15 +1,9 @@
 {
 	"pages": [
 		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "首页"
-			}
-		},
-		{
 			"path": "pages/category/category",
 			"style": {
-				"navigationBarTitleText": "分类"
+				"navigationBarTitleText": "首页"
 			}
 		},
 		{
@@ -38,12 +32,8 @@
 		"backgroundColor": "#ffffff",
 		"list": [
 			{
-				"pagePath": "pages/index/index",
-				"text": "首页"
-			},
-			{
 				"pagePath": "pages/category/category",
-				"text": "分类"
+				"text": "首页"
 			},
 			{
 				"pagePath": "pages/cart/cart",

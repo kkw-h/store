@@ -1,6 +1,11 @@
 import pytest
 from httpx import AsyncClient
 from app.core.config import settings
+import random
+import string
+
+def generate_random_phone():
+    return f"139{random.randint(10000000, 99999999)}"
 
 @pytest.mark.asyncio
 async def test_wechat_login(client: AsyncClient):
@@ -19,16 +24,21 @@ async def test_wechat_login(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_phone_login(client: AsyncClient):
-    # Test Phone Login
+    # Test Phone Login with new user
+    phone = generate_random_phone()
     response = await client.post(
         f"{settings.API_V1_STR}/auth/phone",
-        json={"phone": "13800138000", "code": "123456"}
+        json={"phone": phone, "code": "123456"}
     )
     assert response.status_code == 200
     data = response.json()
     assert data["code"] == 200
     assert "token" in data["data"]
-    assert data["data"]["userInfo"]["phone"] == "13800138000"
+    assert data["data"]["userInfo"]["phone"] == phone
+    # Verify nickname is generated
+    nickname = data["data"]["userInfo"]["nickname"]
+    assert nickname is not None
+    assert nickname.startswith("用户_")
 
 @pytest.mark.asyncio
 async def test_phone_login_validation(client: AsyncClient):
