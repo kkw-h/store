@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, func, BigInteger, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, func, BigInteger, ForeignKey, Index, Boolean, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -71,6 +71,7 @@ class OrderItem(Base):
     product_image = Column(String(255), comment='下单时的商品图片快照')
     price = Column(Numeric(10, 2), nullable=False, comment='下单时的商品单价快照')
     quantity = Column(Integer, nullable=False, default=1, comment='购买数量')
+    is_removed = Column(Boolean, nullable=False, default=False, server_default=text('false'), comment='是否已被管理员移除')
 
     # 关联关系
     order = relationship("Order", back_populates="items")

@@ -44,3 +44,12 @@ export function verifyPickup(data) {
     data
   })
 }
+
+// 修改订单商品
+export function updateOrderItems(data) {
+  return request({
+    url: '/api/v1/admin/order/update_items',
+    method: 'post',
+    data
+  })
+}

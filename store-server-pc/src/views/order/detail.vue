@@ -85,9 +85,25 @@
 
     <el-card class="goods-section" shadow="never">
       <template #header>
-        <span>商品清单</span>
+        <div class="card-header">
+          <span>商品清单</span>
+          <div v-if="[0, 1, 2].includes(order.status)">
+            <template v-if="!isEditing">
+              <el-button type="primary" link @click="handleEdit">修改商品</el-button>
+            </template>
+            <template v-else>
+              <el-button link @click="handleCancelEdit">取消</el-button>
+              <el-button type="primary" link :loading="saving" @click="handleSaveEdit">保存</el-button>
+            </template>
+          </div>
+        </div>
       </template>
-      <el-table :data="order.items" border style="width: 100%">
+      <el-table 
+        :data="order.items" 
+        border 
+        style="width: 100%"
+        :row-style="({ row }) => row.isRemoved ? { opacity: 0.5, backgroundColor: '#f0f2f5' } : {}"
+      >
         <el-table-column label="商品图" width="100" align="center">
           <template #default="{ row }">
             <el-image
@@ -99,14 +115,46 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="商品名称" prop="product_name" />
+        <el-table-column label="商品名称" prop="product_name">
+          <template #default="{ row }">
+            <span :style="row.isRemoved ? 'text-decoration: line-through' : ''">{{ row.product_name }}</span>
+            <el-tag v-if="row.isRemoved" size="small" type="danger" style="margin-left: 5px">已移除</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="规格" prop="specs" />
         <el-table-column label="单价" prop="price" align="center">
           <template #default="{ row }">¥{{ row.price }}</template>
         </el-table-column>
-        <el-table-column label="数量" prop="quantity" align="center" />
+        <el-table-column label="数量" prop="quantity" align="center" width="180">
+          <template #default="{ row }">
+            <el-input-number 
+              v-if="isEditing" 
+              v-model="row.editQuantity" 
+              :min="1" 
+              size="small" 
+              style="width: 120px"
+              :disabled="row.isRemoved"
+            />
+            <span v-else>{{ row.quantity }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="小计" align="center">
-          <template #default="{ row }">¥{{ (row.price * row.quantity).toFixed(2) }}</template>
+          <template #default="{ row }">
+            <span v-if="isEditing && !row.isRemoved">¥{{ (row.price * row.editQuantity).toFixed(2) }}</span>
+            <span v-else>¥{{ (row.price * row.quantity).toFixed(2) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isEditing" label="操作" align="center" width="100">
+          <template #default="{ row }">
+            <el-button 
+              :type="row.isRemoved ? 'success' : 'danger'" 
+              link 
+              size="small" 
+              @click="row.isRemoved = !row.isRemoved"
+            >
+              {{ row.isRemoved ? '恢复' : '移除' }}
+            </el-button>
+          </template>
         </el-table-column>
       </el-table>
     </el-card>
@@ -222,7 +270,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getOrderDetail, auditOrder, completeDelivery, verifyPickup } from '@/api/order'
+import { getOrderDetail, auditOrder, completeDelivery, verifyPickup, updateOrderItems } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 
@@ -232,6 +280,46 @@ const order = ref({
   items: [],
   timeline: []
 })
+
+// 修改商品相关
+const isEditing = ref(false)
+const saving = ref(false)
+
+const handleEdit = () => {
+  order.value.items.forEach(item => {
+    item.editQuantity = item.quantity
+    item.isRemoved = false
+  })
+  isEditing.value = true
+}
+
+const handleCancelEdit = () => {
+  isEditing.value = false
+}
+
+const handleSaveEdit = async () => {
+  saving.value = true
+  try {
+    const items = order.value.items.map(item => ({
+      item_id: item.id,
+      quantity: item.editQuantity,
+      is_removed: item.isRemoved
+    }))
+    
+    await updateOrderItems({
+      order_id: order.value.id,
+      items
+    })
+    
+    ElMessage.success('修改成功')
+    isEditing.value = false
+    fetchData()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    saving.value = false
+  }
+}
 
 // 确认送达相关
 const completeDialogVisible = ref(false)

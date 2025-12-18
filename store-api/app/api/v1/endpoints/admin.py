@@ -228,6 +228,65 @@ async def verify_pickup(
         }
     )
 
+@router.post("/order/update_items", response_model=ResponseModel)
+async def update_order_items(
+    request: admin_schemas.OrderUpdateItemsRequest,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    """
+    管理员修改订单商品
+    """
+    # 1. Get Order with Items
+    query = select(Order).where(Order.id == request.order_id).options(selectinload(Order.items))
+    result = await db.execute(query)
+    order = result.scalar_one_or_none()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    # 2. Process updates
+    # Map item_id to OrderItem object for easy access
+    order_items_map = {item.id: item for item in order.items}
+    
+    updated_items_info = []
+    
+    for item_update in request.items:
+        if item_update.item_id not in order_items_map:
+            continue
+            
+        item = order_items_map[item_update.item_id]
+        
+        # Apply changes
+        if item_update.is_removed is not None:
+            item.is_removed = item_update.is_removed
+        
+        if item_update.quantity is not None:
+            item.quantity = item_update.quantity
+            
+        updated_items_info.append(f"{item.product_name} (x{item.quantity}{' Removed' if item.is_removed else ''})")
+            
+    # 3. Recalculate Totals
+    new_total_amount = 0
+    for item in order.items:
+        if not item.is_removed:
+            new_total_amount += item.price * item.quantity
+            
+    order.total_amount = new_total_amount
+    order.final_amount = order.total_amount + order.delivery_fee
+    
+    # 4. Add Timeline
+    timeline = OrderTimeline(
+        order_id=order.id,
+        status="订单商品变更",
+        remark=f"管理员修改了商品"
+    )
+    db.add(timeline)
+    
+    await db.commit()
+    
+    return success(msg="订单商品已更新")
+
+
 from sqlalchemy.orm import selectinload
 from app.models.product import Product
 

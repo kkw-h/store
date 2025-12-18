@@ -26,6 +26,15 @@ class ShopConfigUpdate(BaseModel):
     store_address: Optional[str] = Field(None, max_length=255, description="店铺地址")
     store_phone: Optional[str] = Field(None, max_length=20, description="联系电话")
 
+class OrderItemUpdate(BaseModel):
+    item_id: int = Field(..., gt=0, description="订单项ID")
+    quantity: Optional[int] = Field(None, ge=0, description="修改后的数量")
+    is_removed: Optional[bool] = Field(None, description="是否标记为删除")
+
+class OrderUpdateItemsRequest(BaseModel):
+    order_id: int = Field(..., gt=0, description="订单ID")
+    items: list[OrderItemUpdate] = Field(..., min_length=1, description="需要修改的订单项列表")
+
 class ShopConfigOut(BaseModel):
     is_open: bool
     open_time: str

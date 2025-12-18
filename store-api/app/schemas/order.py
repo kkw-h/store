@@ -56,11 +56,18 @@ class OrderCreateResponse(BaseModel):
 # --- List & Detail Schemas ---
 
 class OrderItemOut(BaseModel):
+    id: int
     product_id: Optional[int]
     product_name: str
     product_image: Optional[str]
     price: Decimal
     quantity: int
+    is_removed: bool = False
+
+    @field_validator('is_removed', mode='before')
+    @classmethod
+    def set_null_to_false(cls, v):
+        return v if v is not None else False
     
     model_config = ConfigDict(from_attributes=True)
 
