@@ -1,113 +1,115 @@
 <template>
   <div class="app-container">
-    <div class="filter-container">
-      <el-tabs v-model="listQuery.status" type="card" @tab-click="handleTabClick">
-        <el-tab-pane label="全部" :name="0" />
-        <el-tab-pane label="待接单" :name="1" />
-        <el-tab-pane label="待自提" :name="2" />
-        <el-tab-pane label="配送中" :name="3" />
-        <el-tab-pane label="已完成" :name="4" />
-        <el-tab-pane label="已关闭" :name="-1" />
-      </el-tabs>
+    <el-card>
+      <div class="filter-container">
+        <el-tabs v-model="listQuery.status" type="card" @tab-change="handleTabChange">
+          <el-tab-pane label="全部" :name="0" />
+          <el-tab-pane label="待接单" :name="1" />
+          <el-tab-pane label="待自提" :name="2" />
+          <el-tab-pane label="配送中" :name="3" />
+          <el-tab-pane label="已完成" :name="4" />
+          <el-tab-pane label="已关闭" :name="-1" />
+        </el-tabs>
 
-      <div class="filter-actions">
-        <el-button type="primary" icon="Scan" @click="dialogVisible = true">
-          扫码核销
-        </el-button>
-        <el-button icon="Refresh" @click="fetchList">
-          刷新
-        </el-button>
-      </div>
-    </div>
-
-    <el-table
-      v-loading="listLoading"
-      :data="list"
-      border
-      fit
-      highlight-current-row
-      style="width: 100%;"
-    >
-      <el-table-column label="订单号" prop="order_no" min-width="180" align="center" />
-      
-      <el-table-column label="用户信息" min-width="180" align="center">
-        <template #default="{ row }">
-          <div v-if="row.user" class="user-info">
-            <el-avatar :size="30" :src="row.user.avatar_url" v-if="row.user.avatar_url" />
-            <div class="user-detail">
-              <div class="nickname">{{ row.user.nickname || '微信用户' }}</div>
-              <div class="phone">{{ row.user.phone || '--' }}</div>
-            </div>
-          </div>
-          <span v-else>--</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="配送方式" align="center" width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.delivery_type === 'delivery' ? 'primary' : 'success'">
-            {{ row.delivery_type === 'delivery' ? '配送' : '自提' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="实付金额" prop="final_amount" align="center" width="120">
-        <template #default="{ row }">
-          ¥{{ row.final_amount }}
-        </template>
-      </el-table-column>
-
-      <el-table-column label="状态" align="center" width="120">
-        <template #default="{ row }">
-          <el-tag :type="statusTypeFilter(row.status)">
-            {{ row.status_text }}
-          </el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="下单时间" prop="created_at" align="center" width="180">
-        <template #default="{ row }">
-          {{ formatTime(row.created_at) }}
-        </template>
-      </el-table-column>
-
-      <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
-        <template #default="{ row }">
-          <el-button type="primary" link @click="handleDetail(row)">
-            详情
+        <div class="filter-actions">
+          <el-button type="primary" :icon="Aim" @click="dialogVisible = true">
+            扫码核销
           </el-button>
-          
-          <!-- 待接单 (配送单) -->
-          <template v-if="row.status === 1 && row.delivery_type === 'delivery'">
-            <el-button type="success" link @click="handleAudit(row, 'accept')">
-              接单
-            </el-button>
-            <el-button type="danger" link @click="handleReject(row)">
-              拒单
-            </el-button>
-          </template>
+          <el-button icon="Refresh" @click="fetchList">
+            刷新
+          </el-button>
+        </div>
+      </div>
 
-          <!-- 配送中 -->
-          <template v-if="row.status === 3">
-            <el-button type="success" link @click="handleCompleteDelivery(row)">
-              确认送达
-            </el-button>
+      <el-table
+        v-loading="listLoading"
+        :data="list"
+        border
+        fit
+        highlight-current-row
+        style="width: 100%;"
+      >
+        <el-table-column label="订单号" prop="order_no" min-width="180" align="center" />
+        
+        <el-table-column label="用户信息" min-width="180" align="center">
+          <template #default="{ row }">
+            <div v-if="row.user" class="user-info">
+              <el-avatar :size="30" :src="row.user.avatar_url" v-if="row.user.avatar_url" />
+              <div class="user-detail">
+                <div class="nickname">{{ row.user.nickname || '微信用户' }}</div>
+                <div class="phone">{{ row.user.phone || '--' }}</div>
+              </div>
+            </div>
+            <span v-else>--</span>
           </template>
-        </template>
-      </el-table-column>
-    </el-table>
+        </el-table-column>
 
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="listQuery.page"
-        v-model:page-size="listQuery.size"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        @size-change="fetchList"
-        @current-change="fetchList"
-      />
-    </div>
+        <el-table-column label="配送方式" align="center" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.delivery_type === 'delivery' ? 'primary' : 'success'">
+              {{ row.delivery_type === 'delivery' ? '配送' : '自提' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="实付金额" prop="final_amount" align="center" width="120">
+          <template #default="{ row }">
+            ¥{{ row.final_amount }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="状态" align="center" width="120">
+          <template #default="{ row }">
+            <el-tag :type="statusTypeFilter(row.status)">
+              {{ row.status_text }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="下单时间" prop="created_at" align="center" width="180">
+          <template #default="{ row }">
+            {{ formatTime(row.created_at) }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="handleDetail(row)">
+              详情
+            </el-button>
+            
+            <!-- 待接单 (配送单) -->
+            <template v-if="row.status === 1 && row.delivery_type === 'delivery'">
+              <el-button type="success" link @click="handleAudit(row, 'accept')">
+                接单
+              </el-button>
+              <el-button type="danger" link @click="handleReject(row)">
+                拒单
+              </el-button>
+            </template>
+
+            <!-- 配送中 -->
+            <template v-if="row.status === 3">
+              <el-button type="success" link @click="handleCompleteDelivery(row)">
+                确认送达
+              </el-button>
+            </template>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="listQuery.page"
+          v-model:page-size="listQuery.size"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="fetchList"
+          @current-change="fetchList"
+        />
+      </div>
+    </el-card>
 
     <!-- 核销对话框 -->
     <el-dialog
@@ -118,7 +120,7 @@
       <el-input
         v-model="pickupCode"
         placeholder="请输入或扫描6位核销码"
-        prefix-icon="Scan"
+        :prefix-icon="Aim"
         clearable
         @keyup.enter="handleVerify"
       />
@@ -210,6 +212,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOrderList, auditOrder, completeDelivery, verifyPickup } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Warning, SuccessFilled, Aim, Refresh } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 
 const router = useRouter()
@@ -268,7 +271,8 @@ const fetchList = async () => {
   }
 }
 
-const handleTabClick = () => {
+const handleTabChange = (val) => {
+  listQuery.status = val
   listQuery.page = 1
   fetchList()
 }

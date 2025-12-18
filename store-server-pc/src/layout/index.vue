@@ -19,7 +19,9 @@ import Sidebar from './components/Sidebar.vue'
 import Header from './components/Header.vue'
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/variables.scss' as *;
+
 .app-wrapper {
   display: flex;
   width: 100%;
@@ -31,29 +33,31 @@ import Header from './components/Header.vue'
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f0f2f5;
+  background-color: $bg-color-page;
 }
 
 .app-main {
   flex: 1;
-  padding: 20px;
+  padding: $spacing-md;
   overflow-y: auto;
   position: relative;
-}
-
-/* fade-transform */
-.fade-transform-leave-active,
-.fade-transform-enter-active {
-  transition: all 0.5s;
-}
-
-.fade-transform-enter-from {
-  opacity: 0;
-  transform: translateX(-30px);
-}
-
-.fade-transform-leave-to {
-  opacity: 0;
-  transform: translateX(30px);
+  
+  /* Improve scrollbar in main area */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #c0c4cc;
+    }
+  }
 }
 </style>

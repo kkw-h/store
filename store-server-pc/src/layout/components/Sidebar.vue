@@ -1,19 +1,20 @@
 <template>
-  <el-aside class="sidebar-container" width="220px">
+  <el-aside class="sidebar-container" :width="variables.sidebarWidth">
     <div class="logo">
-      <span>商家后台管理</span>
+      <el-icon class="logo-icon"><Shop /></el-icon>
+      <span v-if="!isCollapse">商家后台管理</span>
     </div>
     <el-menu
       :default-active="activeMenu"
       class="el-menu-vertical"
-      background-color="#304156"
-      text-color="#bfcbd9"
-      active-text-color="#409EFF"
+      :background-color="variables.sidebarBg"
+      :text-color="variables.sidebarText"
+      :active-text-color="variables.sidebarActiveText"
       :collapse="isCollapse"
       router
     >
       <template v-for="route in routes" :key="route.path">
-        <!-- 单个菜单项 (没有子路由或只有一个子路由且不显示父级) -->
+        <!-- Single Item -->
         <el-menu-item
           v-if="!route.meta?.hidden && !route.hidden && hasOneShowingChild(route.children, route)"
           :index="resolvePath(route.path, getTargetRoute(route).path)"
@@ -26,7 +27,7 @@
           </template>
         </el-menu-item>
 
-        <!-- 嵌套菜单 (有多个子路由) -->
+        <!-- Sub Menu -->
         <el-sub-menu
           v-else-if="!route.meta?.hidden && !route.hidden"
           :index="route.path"
@@ -60,11 +61,20 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Shop } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 
-const isCollapse = false // TODO: support collapse
+const isCollapse = false // TODO: support collapse state from store
+
+// CSS Variables from SCSS
+const variables = {
+  sidebarBg: '#304156',
+  sidebarText: '#bfcbd9',
+  sidebarActiveText: '#409eff',
+  sidebarWidth: '220px'
+}
 
 const routes = computed(() => {
   return router.options.routes
@@ -122,26 +132,60 @@ const resolvePath = (basePath, routePath) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/variables.scss' as *;
+
 .sidebar-container {
-  background-color: #304156;
+  background-color: $sidebar-bg;
   height: 100%;
   overflow-x: hidden;
-  transition: width 0.3s;
+  transition: width $transition-duration;
+  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
+  z-index: 1001;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .logo {
-  height: 50px;
-  line-height: 50px;
+  height: $sidebar-logo-height;
+  line-height: $sidebar-logo-height;
   text-align: center;
   color: #fff;
-  font-weight: bold;
-  font-size: 16px;
+  font-weight: 600;
+  font-size: 18px;
   background-color: #2b2f3a;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  
+  .logo-icon {
+    font-size: 24px;
+    color: $color-primary;
+  }
 }
 
 .el-menu-vertical {
   border-right: none;
+  
+  :deep(.el-menu-item) {
+    &.is-active {
+      background-color: #263445 !important;
+      border-right: 3px solid $color-primary;
+    }
+    
+    &:hover {
+      background-color: #263445 !important;
+    }
+  }
+  
+  :deep(.el-sub-menu__title) {
+    &:hover {
+      background-color: #263445 !important;
+    }
+  }
 }
 </style>

@@ -1,127 +1,123 @@
 <template>
   <div class="app-container">
-    <!-- 筛选栏 -->
-    <div class="filter-container">
-      <el-input
-        v-model="listQuery.name"
-        placeholder="商品名称"
-        style="width: 200px;"
-        class="filter-item"
-        @keyup.enter="handleFilter"
-      />
-      <el-select
-        v-model="listQuery.category_id"
-        placeholder="分类"
-        clearable
-        style="width: 150px; margin-left: 10px;"
-        class="filter-item"
-      >
-        <el-option
-          v-for="item in categoryOptions"
-          :key="item.id"
-          :label="item.name"
-          :value="item.id"
+    <el-card>
+      <!-- 筛选栏 -->
+      <div class="filter-container">
+        <el-input
+          v-model="listQuery.name"
+          placeholder="商品名称"
+          style="width: 200px;"
+          class="filter-item"
+          @keyup.enter="handleFilter"
         />
-      </el-select>
-      <el-select
-        v-model="listQuery.status"
-        placeholder="状态"
-        clearable
-        style="width: 120px; margin-left: 10px;"
-        class="filter-item"
-      >
-        <el-option label="上架" :value="1" />
-        <el-option label="下架" :value="0" />
-      </el-select>
-      <el-button class="filter-item" type="primary" icon="Search" @click="handleFilter" style="margin-left: 10px;">
-        搜索
-      </el-button>
-      <el-button class="filter-item" type="primary" icon="Plus" @click="handleCreate" style="margin-left: 10px;">
-        发布商品
-      </el-button>
-    </div>
-
-    <!-- 表格 -->
-    <el-table
-      v-loading="listLoading"
-      :data="list"
-      border
-      fit
-      highlight-current-row
-      style="width: 100%; margin-top: 20px;"
-    >
-      <el-table-column label="ID" prop="id" align="center" width="80" />
-      
-      <el-table-column label="商品图" align="center" width="100">
-        <template #default="{ row }">
-          <el-image
-            style="width: 60px; height: 60px"
-            :src="row.thumb_url"
-            :preview-src-list="[row.thumb_url]"
-            fit="cover"
-            preview-teleported
-          >
-             <template #error>
-              <div class="image-slot">
-                <el-icon><Picture /></el-icon>
-              </div>
-            </template>
-          </el-image>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="商品名称" min-width="200">
-        <template #default="{ row }">
-          <div class="product-name">{{ row.name }}</div>
-          <div class="product-desc">{{ row.description }}</div>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="价格" align="center" width="120">
-        <template #default="{ row }">
-          <div>¥{{ row.price }}</div>
-          <div v-if="row.original_price" class="original-price">¥{{ row.original_price }}</div>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="库存" prop="stock" align="center" width="100" />
-      <el-table-column label="销量" prop="sales_count" align="center" width="100" />
-
-      <el-table-column label="状态" align="center" width="100">
-        <template #default="{ row }">
-          <el-switch
-            v-model="row.status"
-            :active-value="1"
-            :inactive-value="0"
-            @change="(val) => handleStatusChange(row, val)"
+        <el-select
+          v-model="listQuery.category_id"
+          placeholder="分类"
+          clearable
+          style="width: 150px; margin-left: 10px;"
+          class="filter-item"
+        >
+          <el-option
+            v-for="item in categoryOptions"
+            :key="item.id"
+            :label="item.name"
+            :value="item.id"
           />
-        </template>
-      </el-table-column>
+        </el-select>
+        <el-select
+          v-model="listQuery.status"
+          placeholder="状态"
+          clearable
+          style="width: 120px; margin-left: 10px;"
+          class="filter-item"
+        >
+          <el-option label="上架" :value="1" />
+          <el-option label="下架" :value="0" />
+        </el-select>
+        <el-button class="filter-item" type="primary" icon="Search" @click="handleFilter" style="margin-left: 10px;">
+          搜索
+        </el-button>
+        <el-button class="filter-item" type="primary" icon="Plus" @click="handleCreate" style="margin-left: 10px;">
+          发布商品
+        </el-button>
+      </div>
 
-      <el-table-column label="操作" align="center" width="150" class-name="small-padding fixed-width">
-        <template #default="{ row }">
-          <el-button type="primary" link @click="handleUpdate(row)">
-            编辑
-          </el-button>
-          <el-button type="danger" link @click="handleDelete(row)">
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+      <!-- 表格 -->
+      <el-table
+        v-loading="listLoading"
+        :data="list"
+        border
+        fit
+        highlight-current-row
+        style="width: 100%; margin-top: 20px;"
+      >
+        <el-table-column label="ID" prop="id" align="center" width="80" />
+        
+        <el-table-column label="商品图" align="center" width="100">
+          <template #default="{ row }">
+            <el-image
+              style="width: 60px; height: 60px"
+              :src="row.thumb_url"
+              :preview-src-list="[row.thumb_url]"
+              fit="cover"
+              preview-teleported
+            />
+          </template>
+        </el-table-column>
 
-    <!-- 分页 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="listQuery.page"
-        v-model:page-size="listQuery.size"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        @size-change="handleFilter"
-        @current-change="fetchList"
-      />
-    </div>
+        <el-table-column label="商品名称" min-width="200">
+          <template #default="{ row }">
+            <div class="product-name">{{ row.name }}</div>
+            <div class="product-desc">{{ row.description }}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="价格" align="center" width="120">
+          <template #default="{ row }">
+            <div>¥{{ row.price }}</div>
+            <div v-if="row.original_price" class="original-price">¥{{ row.original_price }}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="库存" prop="stock" align="center" width="100" />
+        <el-table-column label="销量" prop="sales_count" align="center" width="100" />
+
+        <el-table-column label="状态" align="center" width="100">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              @change="(val) => handleStatusChange(row, val)"
+            />
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" align="center" width="150" class-name="small-padding fixed-width">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="handleUpdate(row)">
+              编辑
+            </el-button>
+            <el-button type="danger" link @click="handleDelete(row)">
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="listQuery.page"
+          v-model:page-size="listQuery.size"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleFilter"
+          @current-change="fetchList"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -130,6 +126,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getProductList, updateProductStatus, deleteProduct, getCategoryList } from '@/api/product'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Picture } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
